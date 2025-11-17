@@ -5,124 +5,548 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Lookup - AbuGhali Motors</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        
+        .header h1 {
+            color: #e0e0e0;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #b0b0b0;
+            font-size: 14px;
+        }
+        
+        .search-card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        
+        .search-card h2 {
+            color: #e0e0e0;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #b0b0b0;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #4a4a4a;
+        }
+        
+        .checkbox-group {
+            margin: 15px 0;
+        }
+        
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #b0b0b0;
+            cursor: pointer;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: #4a4a4a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #5a5a5a;
+        }
+        
+        .btn-primary {
+            background: #4a4a4a;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .customer-card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+        }
+        
+        .customer-card h2 {
+            color: #e0e0e0;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .sap-badge {
+            background: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+        
+        .sap-badge .label {
+            font-size: 12px;
+            color: #808080;
+            text-transform: uppercase;
+        }
+        
+        .sap-badge .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin-top: 5px;
+        }
+        
+        .sap-badge .value.found {
+            color: #4caf50;
+        }
+        
+        .sap-badge .value.not-found {
+            color: #f44336;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .detail-item {
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 3px solid #4a4a4a;
+            cursor: move;
+        }
+        
+        .detail-item:hover {
+            background: #333;
+        }
+        
+        .detail-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .detail-label {
+            font-size: 11px;
+            color: #808080;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+        
+        .detail-value.highlight {
+            color: #e0e0e0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .btn-success {
+            background: #4caf50;
+            width: 100%;
+            margin-top: 15px;
+        }
+        
+        .btn-success:hover {
+            background: #388e3c;
+        }
+        
+        .status-bar {
+            background: #1a1a1a;
+            padding: 10px 20px;
+            border-top: 1px solid #333;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            color: #b0b0b0;
+            font-size: 12px;
+        }
+        
+        .json-display {
+            background: #0f0f0f;
+            color: #a0a0a0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow: auto;
+            border: 1px solid #333;
+        }
+        
+        .toggle-btn {
+            width: 100%;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #b0b0b0;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .toggle-btn:hover {
+            background: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Animated Background -->
-        <div class="animated-bg"></div>
+    <div class="container">
+        <div class="header">
+            <h1>Customer Lookup System</h1>
+            <p>AbuGhali Motors</p>
+        </div>
         
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-content">
-                    <div class="logo-section">
-                        <div class="logo-icon">🚗</div>
-                        <div class="logo-text">
-                            <h1>Customer Lookup</h1>
-                            <p>AbuGhali Motors</p>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Search Section -->
-            <section class="search-section">
-                <div class="search-card">
-                    <div class="search-header">
-                        <h2>Search Customer</h2>
-                        <p>Enter Customer MK to retrieve information</p>
-                    </div>
-                    
-                    <div class="search-form">
-                        <div class="input-wrapper">
-                            <label for="customer-mk">
-                                <span class="label-icon">🔢</span>
-                                Customer MK
-                            </label>
-                            <input 
-                                type="text" 
-                                id="customer-mk" 
-                                placeholder="Enter Customer MK (e.g., 18643)"
-                                autocomplete="off"
-                            />
-                        </div>
-                        
-                        <div class="checkbox-wrapper">
-                            <label class="custom-checkbox">
-                                <input type="checkbox" id="corporate-checkbox" />
-                                <span class="checkmark"></span>
-                                <span class="checkbox-label">Corporate Customer</span>
-                            </label>
-                        </div>
-                        
-                        <button id="search-btn" class="btn-primary">
-                            <span class="btn-text">Search</span>
-                            <span class="btn-loader" style="display: none;">
-                                <span class="spinner"></span>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Results Section -->
-            <section class="results-section" id="results-section" style="display: none;">
-                <!-- Customer Info Card -->
-                <div class="customer-card" id="customer-card">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <span class="card-icon">📋</span>
-                            <h2>Customer Information</h2>
-                        </div>
-                        <div class="sap-badge" id="sap-badge">
-                            <span class="badge-icon">🏷️</span>
-                            <div class="badge-content">
-                                <span class="badge-label">SAP Code</span>
-                                <span class="badge-value" id="sap-code-value">Not Found</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card-body" id="customer-details">
-                        <!-- Customer details will be dynamically inserted here -->
-                    </div>
-                    
-                    <button id="generate-sap-btn" class="btn-success" style="display: none;">
-                        <span class="btn-icon">✨</span>
-                        <span>Generate SAP Code</span>
-                    </button>
-                </div>
-
-                <!-- Raw Data Toggle -->
-                <div class="raw-data-section">
-                    <button class="toggle-btn" id="toggle-raw-data">
-                        <span class="toggle-icon">📄</span>
-                        <span class="toggle-text">Show Raw JSON Data</span>
-                        <span class="toggle-arrow">▼</span>
-                    </button>
-                    <div class="raw-data-content" id="raw-data-content" style="display: none;">
-                        <pre id="raw-json-data" class="json-display">No data available</pre>
-                    </div>
-                </div>
-            </section>
+        <div class="search-card">
+            <h2>Search Customer</h2>
+            <div class="form-group">
+                <label for="customer-mk">Customer MK:</label>
+                <input type="text" id="customer-mk" placeholder="Enter Customer MK (e.g., 18643)" />
+            </div>
+            
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="corporate-checkbox" />
+                    <span>Corporate Customer</span>
+                </label>
+            </div>
+            
+            <button id="search-btn" class="btn btn-primary">Search</button>
         </div>
-
-        <!-- Status Bar -->
-        <div class="status-bar" id="status-bar">
-            <span class="status-icon">✅</span>
-            <span class="status-text">Ready</span>
+        
+        <div class="results" id="results-section">
+            <div class="customer-card">
+                <h2>Customer Information</h2>
+                <div class="sap-badge">
+                    <div class="label">SAP Customer Code</div>
+                    <div class="value" id="sap-code-value">Not Found</div>
+                </div>
+                <div id="customer-details"></div>
+                <button id="generate-sap-btn" class="btn btn-success" style="display: none;">Generate SAP Code</button>
+            </div>
+            
+            <button class="toggle-btn" id="toggle-raw-data">Show Raw JSON Data</button>
+            <div id="raw-data-content" style="display: none;">
+                <pre class="json-display" id="raw-json-data"></pre>
+            </div>
         </div>
-
-        <!-- Toast Notifications -->
-        <div id="toast-container"></div>
     </div>
-
-    <script src="{% static 'script.js' %}"></script>
+    
+    <div class="status-bar" id="status-bar">Ready</div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const customerMkInput = document.getElementById('customer-mk');
+            const corporateCheckbox = document.getElementById('corporate-checkbox');
+            const searchBtn = document.getElementById('search-btn');
+            const resultsSection = document.getElementById('results-section');
+            const customerDetails = document.getElementById('customer-details');
+            const sapCodeValue = document.getElementById('sap-code-value');
+            const generateSapBtn = document.getElementById('generate-sap-btn');
+            const statusBar = document.getElementById('status-bar');
+            const toggleRawDataBtn = document.getElementById('toggle-raw-data');
+            const rawDataContent = document.getElementById('raw-data-content');
+            const rawJsonData = document.getElementById('raw-json-data');
+            
+            let rawDataVisible = false;
+            
+            function updateStatus(msg) {
+                statusBar.textContent = msg;
+            }
+            
+            function setLoading(loading) {
+                if (loading) {
+                    searchBtn.disabled = true;
+                    searchBtn.textContent = 'Searching...';
+                    updateStatus('Searching for customer...');
+                } else {
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = 'Search';
+                }
+            }
+            
+            async function handleSearch() {
+                const customerMk = customerMkInput.value.trim();
+                if (!customerMk) {
+                    alert('Please enter a Customer MK');
+                    return;
+                }
+                
+                setLoading(true);
+                resultsSection.style.display = 'none';
+                customerDetails.innerHTML = '';
+                
+                try {
+                    const response = await fetch('/api/search/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            customer_mk: customerMk,
+                            is_corporate: corporateCheckbox.checked
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    setLoading(false);
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    displayCustomerData(data.customer_data, data.sap_customer_code, data.has_sap_record);
+                    if (rawJsonData) rawJsonData.textContent = JSON.stringify(data.customer_data, null, 2);
+                    
+                    resultsSection.style.display = 'block';
+                    updateStatus('Customer lookup completed');
+                    
+                } catch (error) {
+                    setLoading(false);
+                    alert('Error: ' + error.message);
+                    updateStatus('Error: ' + error.message);
+                }
+            }
+            
+            function displayCustomerData(customerData, sapCode, hasSapRecord) {
+                if (hasSapRecord && sapCode) {
+                    sapCodeValue.textContent = sapCode;
+                    sapCodeValue.className = 'value found';
+                    generateSapBtn.style.display = 'none';
+                } else {
+                    sapCodeValue.textContent = 'Not Found';
+                    sapCodeValue.className = 'value not-found';
+                    generateSapBtn.style.display = 'block';
+                }
+                
+                let customer = null;
+                if (Array.isArray(customerData) && customerData.length > 0) {
+                    customer = customerData[0];
+                } else if (typeof customerData === 'object') {
+                    customer = customerData;
+                }
+                
+                if (!customer) {
+                    customerDetails.innerHTML = '<p style="color: #f44336; padding: 20px;">No customer data available</p>';
+                    return;
+                }
+                
+                const detailGrid = document.createElement('div');
+                detailGrid.className = 'detail-grid';
+                detailGrid.id = 'detail-grid';
+                
+                const fieldMappings = {
+                    'CustomerNumber': 'Customer Number',
+                    'CustomerCode': 'Customer Code',
+                    'Status': 'Status',
+                    'Title': 'Title',
+                    'FirstName': 'First Name',
+                    'SurName': 'Surname',
+                    'Phone001': 'Phone 1',
+                    'Phone002': 'Phone 2',
+                    'Address001': 'Address Line 1',
+                    'Address002': 'Address Line 2',
+                    'Address004': 'City/Region',
+                    'Address005': 'Country',
+                    'email': 'Email',
+                    'SocialId': 'Social ID',
+                    'AccountCode': 'Account Code',
+                    'CustomerName': 'Customer Name',
+                    'MobileNumber': 'Mobile Number',
+                    'SAP_customer': 'SAP Customer Code'
+                };
+                
+                Object.keys(customer).forEach((key, index) => {
+                    const value = customer[key];
+                    if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+                        return;
+                    }
+                    
+                    const label = fieldMappings[key] || key;
+                    const isHighlight = key === 'SAP_customer' || key === 'CustomerNumber' || key === 'CustomerCode';
+                    
+                    const detailItem = document.createElement('div');
+                    detailItem.className = 'detail-item';
+                    detailItem.draggable = true;
+                    detailItem.dataset.index = index;
+                    
+                    const detailLabel = document.createElement('div');
+                    detailLabel.className = 'detail-label';
+                    detailLabel.textContent = label;
+                    
+                    const detailValue = document.createElement('div');
+                    detailValue.className = 'detail-value' + (isHighlight ? ' highlight' : '');
+                    detailValue.textContent = value;
+                    
+                    detailItem.appendChild(detailLabel);
+                    detailItem.appendChild(detailValue);
+                    detailGrid.appendChild(detailItem);
+                });
+                
+                customerDetails.appendChild(detailGrid);
+                initDragAndDrop();
+            }
+            
+            function initDragAndDrop() {
+                const detailItems = document.querySelectorAll('.detail-item');
+                const detailGrid = document.getElementById('detail-grid');
+                if (!detailGrid || detailItems.length === 0) return;
+                
+                let draggedElement = null;
+                
+                detailItems.forEach((item) => {
+                    item.addEventListener('dragstart', (e) => {
+                        draggedElement = item;
+                        item.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+                    
+                    item.addEventListener('dragend', () => {
+                        item.classList.remove('dragging');
+                        detailItems.forEach(i => i.classList.remove('drag-over'));
+                    });
+                    
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const afterElement = getDragAfterElement(detailGrid, e.clientY);
+                        const dragging = document.querySelector('.dragging');
+                        if (afterElement == null) {
+                            detailGrid.appendChild(dragging);
+                        } else {
+                            detailGrid.insertBefore(dragging, afterElement);
+                        }
+                    });
+                    
+                    item.addEventListener('dragenter', () => {
+                        if (item !== draggedElement) item.classList.add('drag-over');
+                    });
+                    
+                    item.addEventListener('dragleave', () => {
+                        item.classList.remove('drag-over');
+                    });
+                });
+            }
+            
+            function getDragAfterElement(container, y) {
+                const elements = [...container.querySelectorAll('.detail-item:not(.dragging)')];
+                return elements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    }
+                    return closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+            
+            toggleRawDataBtn.addEventListener('click', function() {
+                rawDataVisible = !rawDataVisible;
+                rawDataContent.style.display = rawDataVisible ? 'block' : 'none';
+                toggleRawDataBtn.textContent = rawDataVisible ? 'Hide Raw JSON Data' : 'Show Raw JSON Data';
+            });
+            
+            generateSapBtn.addEventListener('click', async function() {
+                const customerMk = customerMkInput.value.trim();
+                if (!customerMk) {
+                    alert('Please enter a Customer MK');
+                    return;
+                }
+                if (confirm('Generate SAP Customer Code for Customer MK: ' + customerMk + '?')) {
+                    try {
+                        const response = await fetch('/api/generate-sap-code/', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({customer_mk: customerMk})
+                        });
+                        const data = await response.json();
+                        alert(data.message || 'SAP code generation initiated');
+                    } catch (error) {
+                        alert('Error: ' + error.message);
+                    }
+                }
+            });
+            
+            searchBtn.addEventListener('click', handleSearch);
+            customerMkInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') handleSearch();
+            });
+            
+            updateStatus('Ready');
+        });
+    </script>
 </body>
 </html>
-
