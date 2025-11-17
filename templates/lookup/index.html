@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Lookup - AbuGhali Motors</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Animated Background -->
+        <div class="animated-bg"></div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <div class="logo-icon">🚗</div>
+                        <div class="logo-text">
+                            <h1>Customer Lookup</h1>
+                            <p>AbuGhali Motors</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Search Section -->
+            <section class="search-section">
+                <div class="search-card">
+                    <div class="search-header">
+                        <h2>Search Customer</h2>
+                        <p>Enter Customer MK to retrieve information</p>
+                    </div>
+                    
+                    <div class="search-form">
+                        <div class="input-wrapper">
+                            <label for="customer-mk">
+                                <span class="label-icon">🔢</span>
+                                Customer MK
+                            </label>
+                            <input 
+                                type="text" 
+                                id="customer-mk" 
+                                placeholder="Enter Customer MK (e.g., 18643)"
+                                autocomplete="off"
+                            />
+                        </div>
+                        
+                        <div class="checkbox-wrapper">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="corporate-checkbox" />
+                                <span class="checkmark"></span>
+                                <span class="checkbox-label">Corporate Customer</span>
+                            </label>
+                        </div>
+                        
+                        <button id="search-btn" class="btn-primary">
+                            <span class="btn-text">Search</span>
+                            <span class="btn-loader" style="display: none;">
+                                <span class="spinner"></span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="results-section" style="display: none;">
+                <!-- Customer Info Card -->
+                <div class="customer-card" id="customer-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="card-icon">📋</span>
+                            <h2>Customer Information</h2>
+                        </div>
+                        <div class="sap-badge" id="sap-badge">
+                            <span class="badge-icon">🏷️</span>
+                            <div class="badge-content">
+                                <span class="badge-label">SAP Code</span>
+                                <span class="badge-value" id="sap-code-value">Not Found</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body" id="customer-details">
+                        <!-- Customer details will be dynamically inserted here -->
+                    </div>
+                    
+                    <button id="generate-sap-btn" class="btn-success" style="display: none;">
+                        <span class="btn-icon">✨</span>
+                        <span>Generate SAP Code</span>
+                    </button>
+                </div>
+
+                <!-- Raw Data Toggle -->
+                <div class="raw-data-section">
+                    <button class="toggle-btn" id="toggle-raw-data">
+                        <span class="toggle-icon">📄</span>
+                        <span class="toggle-text">Show Raw JSON Data</span>
+                        <span class="toggle-arrow">▼</span>
+                    </button>
+                    <div class="raw-data-content" id="raw-data-content" style="display: none;">
+                        <pre id="raw-json-data" class="json-display">No data available</pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="status-bar">
+            <span class="status-icon">✅</span>
+            <span class="status-text">Ready</span>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container"></div>
+    </div>
+
+    <script src="{% static 'script.js' %}"></script>
+</body>
+</html>
+
