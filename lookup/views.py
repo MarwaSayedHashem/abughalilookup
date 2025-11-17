@@ -5,9 +5,17 @@ import requests
 import xml.etree.ElementTree as ET
 import json
 import urllib3
+import sys
 from typing import Optional, Tuple
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass  # If reconfiguration fails, continue anyway
 
 # API Configuration
 AUTOLINE_BASE_URL = "http://41.33.17.242:7050"
@@ -187,14 +195,31 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
 
         print(f"SAP API Status Code: {response.status_code}")
         print(f"SAP API Response Headers: {dict(response.headers)}")
-        print(f"SAP API Response (first 1000 chars): {response.text[:1000]}\n")
+        
+        # Safely print response text (handle Unicode encoding errors)
+        try:
+            response_preview = response.text[:1000] if response.text else "[no text]"
+            print(f"SAP API Response (first 1000 chars): {response_preview}\n")
+        except UnicodeEncodeError:
+            # Fallback: encode to ASCII with replacement
+            try:
+                safe_preview = response.text[:1000].encode('ascii', errors='replace').decode('ascii')
+                print(f"SAP API Response (first 1000 chars, ASCII): {safe_preview}\n")
+            except Exception:
+                print(f"SAP API Response: [encoding error, length: {len(response.text) if response.text else 0}]\n")
 
         if response.status_code == 200:
             # Parse XML response
             try:
                 xml_content = response.content
                 print(f"SAP Response Length: {len(xml_content)} bytes")
-                print(f"SAP Response (first 1000 chars): {xml_content[:1000].decode('utf-8', errors='ignore')}")
+                
+                # Safely decode and print XML (handle Unicode errors)
+                try:
+                    xml_preview = xml_content[:1000].decode('utf-8', errors='replace')
+                    print(f"SAP Response (first 1000 chars): {xml_preview}")
+                except Exception as e:
+                    print(f"SAP Response preview (encoding error): {str(e)}")
 
                 # Check if response is empty
                 if not xml_content or len(xml_content.strip()) == 0:
@@ -210,21 +235,41 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
                     'd': 'http://schemas.microsoft.com/ado/2007/08/dataservices'
                 }
 
-                # Debug: Print all elements to see structure
+                # Debug: Print all elements to see structure (safely handle Unicode)
                 print("\n=== XML Structure Debug ===")
                 customer_found_tags = []
                 for elem in root.iter():
                     tag = elem.tag
                     text = elem.text if elem.text else ""
+                    
+                    # Safely encode text for printing
+                    try:
+                        safe_text = text.strip() if text else ""
+                        safe_tag = tag
+                    except Exception:
+                        safe_text = "[encoding error]"
+                        safe_tag = tag
+                    
                     if 'Customer' in tag:
-                        customer_found_tags.append(f"Tag: {tag}, Text: '{text}'")
-                    if text.strip() and len(text.strip()) < 50:  # Only print short values
-                        print(f"Tag: {tag}, Text: {text.strip()}")
+                        try:
+                            customer_found_tags.append(f"Tag: {tag}, Text: '{safe_text}'")
+                        except Exception:
+                            customer_found_tags.append(f"Tag: {tag}, Text: [encoding error]")
+                    
+                    if safe_text and len(safe_text) < 50:  # Only print short values
+                        try:
+                            print(f"Tag: {safe_tag}, Text: {safe_text}")
+                        except UnicodeEncodeError:
+                            # Fallback: print with ASCII replacement
+                            print(f"Tag: {safe_tag}, Text: {safe_text.encode('ascii', errors='replace').decode('ascii')}")
                 
                 if customer_found_tags:
                     print("\n=== Customer-related tags found ===")
                     for tag_info in customer_found_tags:
-                        print(tag_info)
+                        try:
+                            print(tag_info)
+                        except UnicodeEncodeError:
+                            print(tag_info.encode('ascii', errors='replace').decode('ascii'))
                 print("=== End XML Debug ===\n")
 
                 # Try multiple approaches to find the Customer element
