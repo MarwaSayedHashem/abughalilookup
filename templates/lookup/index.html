@@ -622,56 +622,196 @@
                     return;
                 }
                 
-                // Fields to hide/remove
-                const hiddenFields = ['Status', 'Phone002', 'Phone003', 'Phone004', 'Postcode', 'CountryC', 'Sex'];
+                // Check if this is a corporate customer (has CustomerCode or AccountCode)
+                const isCorporate = customer.CustomerCode !== undefined || customer.AccountCode !== undefined;
                 
-                // Concatenate address fields
-                const addressParts = [];
-                if (customer.Address001 && customer.Address001.trim()) addressParts.push(customer.Address001.trim());
-                if (customer.Address002 && customer.Address002.trim()) addressParts.push(customer.Address002.trim());
-                if (customer.Address003 && customer.Address003.trim()) addressParts.push(customer.Address003.trim());
-                if (customer.Address004 && customer.Address004.trim()) addressParts.push(customer.Address004.trim());
-                if (customer.Address005 && customer.Address005.trim()) addressParts.push(customer.Address005.trim());
-                const fullAddress = addressParts.join(' ');
+                let processedCustomer = {};
+                let fieldLabels = {};
+                let displayOrder = [];
                 
-                // Create processed customer object with renamed fields
-                const processedCustomer = {};
-                
-                // Process each field
-                Object.keys(customer).forEach(key => {
-                    // Skip hidden fields
-                    if (hiddenFields.includes(key)) {
-                        return;
-                    }
-                    
-                    // Skip individual address fields (we'll add the concatenated one)
-                    if (key.startsWith('Address')) {
-                        return;
-                    }
+                if (isCorporate) {
+                    // CORPORATE CUSTOMER PROCESSING
                     
                     // Rename fields
-                    let displayKey = key;
-                    let displayValue = customer[key];
-                    
-                    if (key === 'CustomerNumber') {
-                        displayKey = 'Customer MK';
-                    } else if (key === 'SocialId') {
-                        displayKey = 'National ID';
-                    } else if (key === 'Phone001') {
-                        displayKey = 'Phone';
+                    if (customer.CustomerCode !== undefined) {
+                        processedCustomer['Customer MK'] = customer.CustomerCode;
                     }
                     
-                    // Skip empty values
-                    if (displayValue === null || displayValue === undefined || (typeof displayValue === 'string' && displayValue.trim() === '')) {
-                        return;
+                    if (customer.AccountCode !== undefined) {
+                        processedCustomer['AccountCode'] = customer.AccountCode;
                     }
                     
-                    processedCustomer[displayKey] = displayValue;
-                });
-                
-                // Add concatenated address if it exists
-                if (fullAddress) {
-                    processedCustomer['Address'] = fullAddress;
+                    if (customer.RegestreationNumber !== undefined) {
+                        processedCustomer['Tax Registeration'] = customer.RegestreationNumber;
+                    }
+                    
+                    if (customer.CustomerName !== undefined) {
+                        processedCustomer['Corporate'] = customer.CustomerName;
+                    }
+                    
+                    // Concatenate Arabic name (FirstName + LastName)
+                    const arabicNameParts = [];
+                    if (customer.FirstName && customer.FirstName.trim()) {
+                        arabicNameParts.push(customer.FirstName.trim());
+                    }
+                    if (customer.LastName && customer.LastName.trim()) {
+                        arabicNameParts.push(customer.LastName.trim());
+                    }
+                    if (arabicNameParts.length > 0) {
+                        processedCustomer['NAME 1'] = arabicNameParts.join(' ');
+                    }
+                    
+                    // Concatenate English name (EnglishFirstNmae + EnglishLastName)
+                    const englishNameParts = [];
+                    if (customer.EnglishFirstNmae && customer.EnglishFirstNmae.trim()) {
+                        englishNameParts.push(customer.EnglishFirstNmae.trim());
+                    }
+                    if (customer.EnglishLastName && customer.EnglishLastName.trim()) {
+                        englishNameParts.push(customer.EnglishLastName.trim());
+                    }
+                    if (englishNameParts.length > 0) {
+                        processedCustomer['NAME 2'] = englishNameParts.join(' ');
+                    }
+                    
+                    // Mobile number
+                    if (customer.MobileNumber !== undefined) {
+                        processedCustomer['MobileNumber'] = customer.MobileNumber;
+                    }
+                    
+                    // Email
+                    if (customer.Email !== undefined) {
+                        processedCustomer['Email'] = customer.Email;
+                    }
+                    
+                    // Concatenate address fields
+                    const addressParts = [];
+                    if (customer.Address && customer.Address.trim()) addressParts.push(customer.Address.trim());
+                    if (customer.District && customer.District.trim()) addressParts.push(customer.District.trim());
+                    if (customer.Region && customer.Region.trim()) addressParts.push(customer.Region.trim());
+                    if (customer.BuildingNumber && customer.BuildingNumber.trim()) addressParts.push(customer.BuildingNumber.trim());
+                    if (addressParts.length > 0) {
+                        processedCustomer['Address'] = addressParts.join(' ');
+                    } else {
+                        // If no concatenated address, show individual fields
+                        if (customer.Address && customer.Address.trim()) processedCustomer['Address'] = customer.Address;
+                        if (customer.District && customer.District.trim()) processedCustomer['District'] = customer.District;
+                        if (customer.Region && customer.Region.trim()) processedCustomer['Region'] = customer.Region;
+                        if (customer.BuildingNumber && customer.BuildingNumber.trim()) processedCustomer['BuildingNumber'] = customer.BuildingNumber;
+                    }
+                    
+                    // Field labels for corporate
+                    fieldLabels = {
+                        'Customer MK': 'Customer MK',
+                        'AccountCode': 'Account Code',
+                        'Tax Registeration': 'Tax Registeration',
+                        'Corporate': 'Corporate',
+                        'NAME 1': 'NAME 1 (Arabic)',
+                        'NAME 2': 'NAME 2 (English)',
+                        'MobileNumber': 'Mobile Number',
+                        'Email': 'Email',
+                        'Address': 'Address',
+                        'District': 'District',
+                        'Region': 'Region',
+                        'BuildingNumber': 'Building Number',
+                        'SAP_customer': 'SAP Customer Code'
+                    };
+                    
+                    // Display order for corporate
+                    displayOrder = [
+                        'Customer MK',
+                        'AccountCode',
+                        'Tax Registeration',
+                        'Corporate',
+                        'NAME 1',
+                        'NAME 2',
+                        'MobileNumber',
+                        'Email',
+                        'Address',
+                        'District',
+                        'Region',
+                        'BuildingNumber',
+                        'SAP_customer'
+                    ];
+                    
+                } else {
+                    // REGULAR CUSTOMER PROCESSING
+                    
+                    // Fields to hide/remove
+                    const hiddenFields = ['Status', 'Phone002', 'Phone003', 'Phone004', 'Postcode', 'CountryC', 'Sex'];
+                    
+                    // Concatenate address fields
+                    const addressParts = [];
+                    if (customer.Address001 && customer.Address001.trim()) addressParts.push(customer.Address001.trim());
+                    if (customer.Address002 && customer.Address002.trim()) addressParts.push(customer.Address002.trim());
+                    if (customer.Address003 && customer.Address003.trim()) addressParts.push(customer.Address003.trim());
+                    if (customer.Address004 && customer.Address004.trim()) addressParts.push(customer.Address004.trim());
+                    if (customer.Address005 && customer.Address005.trim()) addressParts.push(customer.Address005.trim());
+                    const fullAddress = addressParts.join(' ');
+                    
+                    // Process each field
+                    Object.keys(customer).forEach(key => {
+                        // Skip hidden fields
+                        if (hiddenFields.includes(key)) {
+                            return;
+                        }
+                        
+                        // Skip individual address fields (we'll add the concatenated one)
+                        if (key.startsWith('Address')) {
+                            return;
+                        }
+                        
+                        // Rename fields
+                        let displayKey = key;
+                        let displayValue = customer[key];
+                        
+                        if (key === 'CustomerNumber') {
+                            displayKey = 'Customer MK';
+                        } else if (key === 'SocialId') {
+                            displayKey = 'National ID';
+                        } else if (key === 'Phone001') {
+                            displayKey = 'Phone';
+                        }
+                        
+                        // Skip empty values
+                        if (displayValue === null || displayValue === undefined || (typeof displayValue === 'string' && displayValue.trim() === '')) {
+                            return;
+                        }
+                        
+                        processedCustomer[displayKey] = displayValue;
+                    });
+                    
+                    // Add concatenated address if it exists
+                    if (fullAddress) {
+                        processedCustomer['Address'] = fullAddress;
+                    }
+                    
+                    // Field labels for regular
+                    fieldLabels = {
+                        'Customer MK': 'Customer MK',
+                        'National ID': 'National ID',
+                        'Title': 'Title',
+                        'FirstName': 'First Name',
+                        'SurName': 'Surname',
+                        'Salute': 'Salutation',
+                        'Phone': 'Phone',
+                        'email': 'Email',
+                        'Address': 'Address',
+                        'SAP_customer': 'SAP Customer Code'
+                    };
+                    
+                    // Display order for regular
+                    displayOrder = [
+                        'Customer MK',
+                        'National ID',
+                        'Title',
+                        'FirstName',
+                        'SurName',
+                        'Salute',
+                        'Phone',
+                        'email',
+                        'Address',
+                        'SAP_customer'
+                    ];
                 }
                 
                 // Add SAP customer code if available
@@ -684,34 +824,6 @@
                 const detailGrid = document.createElement('div');
                 detailGrid.className = 'detail-grid';
                 detailGrid.id = 'detail-grid';
-                
-                // Field display labels mapping
-                const fieldLabels = {
-                    'Customer MK': 'Customer MK',
-                    'National ID': 'National ID',
-                    'Title': 'Title',
-                    'FirstName': 'First Name',
-                    'SurName': 'Surname',
-                    'Salute': 'Salutation',
-                    'Phone': 'Phone',
-                    'email': 'Email',
-                    'Address': 'Address',
-                    'SAP_customer': 'SAP Customer Code'
-                };
-                
-                // Define display order (optional - for consistent ordering)
-                const displayOrder = [
-                    'Customer MK',
-                    'National ID',
-                    'Title',
-                    'FirstName',
-                    'SurName',
-                    'Salute',
-                    'Phone',
-                    'email',
-                    'Address',
-                    'SAP_customer'
-                ];
                 
                 // Get all keys and sort by display order if specified
                 const keys = Object.keys(processedCustomer);
