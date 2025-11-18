@@ -477,5 +477,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     updateStatus('Ready', 'success');
-    console.log('Customer Data Lake for SAP & Autoline initialized');
+    console.log('SAP–Autoline Customer Lake initialized');
 });

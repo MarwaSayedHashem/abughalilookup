@@ -450,7 +450,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Customer Data Lake for SAP & Autoline</h1>
+            <h1>SAP–Autoline Customer Lake</h1>
             <p>Abou Ghaly Motors</p>
         </div>
         
@@ -622,39 +622,116 @@
                     return;
                 }
                 
+                // Fields to hide/remove
+                const hiddenFields = ['Status', 'Phone002', 'Phone003', 'Phone004', 'Postcode', 'CountryC', 'Sex'];
+                
+                // Concatenate address fields
+                const addressParts = [];
+                if (customer.Address001 && customer.Address001.trim()) addressParts.push(customer.Address001.trim());
+                if (customer.Address002 && customer.Address002.trim()) addressParts.push(customer.Address002.trim());
+                if (customer.Address003 && customer.Address003.trim()) addressParts.push(customer.Address003.trim());
+                if (customer.Address004 && customer.Address004.trim()) addressParts.push(customer.Address004.trim());
+                if (customer.Address005 && customer.Address005.trim()) addressParts.push(customer.Address005.trim());
+                const fullAddress = addressParts.join(' ');
+                
+                // Create processed customer object with renamed fields
+                const processedCustomer = {};
+                
+                // Process each field
+                Object.keys(customer).forEach(key => {
+                    // Skip hidden fields
+                    if (hiddenFields.includes(key)) {
+                        return;
+                    }
+                    
+                    // Skip individual address fields (we'll add the concatenated one)
+                    if (key.startsWith('Address')) {
+                        return;
+                    }
+                    
+                    // Rename fields
+                    let displayKey = key;
+                    let displayValue = customer[key];
+                    
+                    if (key === 'CustomerNumber') {
+                        displayKey = 'Customer MK';
+                    } else if (key === 'SocialId') {
+                        displayKey = 'National ID';
+                    } else if (key === 'Phone001') {
+                        displayKey = 'Phone';
+                    }
+                    
+                    // Skip empty values
+                    if (displayValue === null || displayValue === undefined || (typeof displayValue === 'string' && displayValue.trim() === '')) {
+                        return;
+                    }
+                    
+                    processedCustomer[displayKey] = displayValue;
+                });
+                
+                // Add concatenated address if it exists
+                if (fullAddress) {
+                    processedCustomer['Address'] = fullAddress;
+                }
+                
+                // Add SAP customer code if available
+                if (sapCode) {
+                    processedCustomer['SAP_customer'] = sapCode;
+                } else if (customer.SAP_customer) {
+                    processedCustomer['SAP_customer'] = customer.SAP_customer;
+                }
+                
                 const detailGrid = document.createElement('div');
                 detailGrid.className = 'detail-grid';
                 detailGrid.id = 'detail-grid';
                 
-                const fieldMappings = {
-                    'CustomerNumber': 'Customer Number',
-                    'CustomerCode': 'Customer Code',
-                    'Status': 'Status',
+                // Field display labels mapping
+                const fieldLabels = {
+                    'Customer MK': 'Customer MK',
+                    'National ID': 'National ID',
                     'Title': 'Title',
                     'FirstName': 'First Name',
                     'SurName': 'Surname',
-                    'Phone001': 'Phone 1',
-                    'Phone002': 'Phone 2',
-                    'Address001': 'Address Line 1',
-                    'Address002': 'Address Line 2',
-                    'Address004': 'City/Region',
-                    'Address005': 'Country',
+                    'Salute': 'Salutation',
+                    'Phone': 'Phone',
                     'email': 'Email',
-                    'SocialId': 'Social ID',
-                    'AccountCode': 'Account Code',
-                    'CustomerName': 'Customer Name',
-                    'MobileNumber': 'Mobile Number',
+                    'Address': 'Address',
                     'SAP_customer': 'SAP Customer Code'
                 };
                 
-                Object.keys(customer).forEach((key, index) => {
-                    const value = customer[key];
+                // Define display order (optional - for consistent ordering)
+                const displayOrder = [
+                    'Customer MK',
+                    'National ID',
+                    'Title',
+                    'FirstName',
+                    'SurName',
+                    'Salute',
+                    'Phone',
+                    'email',
+                    'Address',
+                    'SAP_customer'
+                ];
+                
+                // Get all keys and sort by display order if specified
+                const keys = Object.keys(processedCustomer);
+                const sortedKeys = keys.sort((a, b) => {
+                    const aIndex = displayOrder.indexOf(a);
+                    const bIndex = displayOrder.indexOf(b);
+                    if (aIndex === -1 && bIndex === -1) return 0;
+                    if (aIndex === -1) return 1;
+                    if (bIndex === -1) return -1;
+                    return aIndex - bIndex;
+                });
+                
+                sortedKeys.forEach((key, index) => {
+                    const value = processedCustomer[key];
                     if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
                         return;
                     }
                     
-                    const label = fieldMappings[key] || key;
-                    const isHighlight = key === 'SAP_customer' || key === 'CustomerNumber' || key === 'CustomerCode';
+                    const label = fieldLabels[key] || key;
+                    const isHighlight = key === 'SAP_customer' || key === 'Customer MK';
                     
                     const detailItem = document.createElement('div');
                     detailItem.className = 'detail-item';
