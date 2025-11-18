@@ -977,13 +977,36 @@
                     try {
                         generateSapBtn.disabled = true;
                         generateSapBtn.innerHTML = '<span>⏳</span><span>Generating...</span>';
+                        
+                        // Get the current customer data from the displayed results
+                        // We need to reconstruct the original customer data from what's displayed
+                        const requestBody = {
+                            customer_mk: customerMk,
+                            is_corporate: corporateCheckbox ? corporateCheckbox.checked : false
+                        };
+                        
+                        console.log('Sending generate SAP code request:', requestBody);
+                        
                         const response = await fetch('/api/generate-sap-code/', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({customer_mk: customerMk})
+                            body: JSON.stringify(requestBody)
                         });
+                        
                         const data = await response.json();
-                        alert(data.message || 'SAP code generation initiated');
+                        
+                        if (data.error) {
+                            alert('Error: ' + data.error);
+                        } else {
+                            alert(data.message || 'SAP code generation initiated');
+                            // Refresh the search to show the new SAP code
+                            if (data.sap_customer_code) {
+                                setTimeout(() => {
+                                    handleSearch();
+                                }, 1000);
+                            }
+                        }
+                        
                         generateSapBtn.disabled = false;
                         generateSapBtn.innerHTML = '<span>✨</span><span>Generate SAP Code</span>';
                     } catch (error) {

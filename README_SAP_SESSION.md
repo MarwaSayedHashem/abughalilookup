@@ -7,7 +7,7 @@ The SAP API requires a session cookie (`SAP_SESSIONID_PS4_100`) that may expire.
 1. Open **Postman**
 2. Make a successful request to the SAP API:
    ```
-   GET https://prd.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV/ENTITYSet(BusinessPartner='',MobileNumber='',NationalID='',AutolineMK='18643')?sap-client=100
+   GET https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV/ENTITYSet(BusinessPartner='',MobileNumber='',NationalID='',AutolineMK='18643')?sap-client=110
    ```
    Headers:
    - `X-Requested-With: X`

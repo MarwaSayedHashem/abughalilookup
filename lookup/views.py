@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import json
 import urllib3
 import sys
+import re
 from typing import Optional, Tuple
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -20,7 +21,8 @@ if sys.platform == 'win32':
 # API Configuration
 AUTOLINE_BASE_URL = "http://41.33.17.242:7050"
 AUTOLINE_TOKEN = "6cktR-wnMWYTRM9Ys8wlwudEOjo-1Ox6wuLLQsF7dqwen2gxLlrZhXoQgXDtK9Vd59k2fpPT1Ts0uwcyb_HdMrEuSlxDcxzd-4LqD8oY-jT1mb7_jSmGre9UtntznE20hcT4Yoxua3BAbDKkqZv19fWdfI6n8-HpZ-Vddzh6aggzdrBMQTB9hM6at5np49rRDH0biFFX9QcJyqdh3D81RbSYF14ZBVUNVIb_TP6mOm0b-DRHPPdQis64ln0qVfMc"
-SAP_BASE_URL = "https://prd.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV"
+SAP_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV"
+SAP_CREATE_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZAUTOLINE_CUSTOMER_LAKE_CREATE_SRV"
 
 # Try to import SAP session cookie from config file
 try:
@@ -55,6 +57,8 @@ def search_customer(request):
 
         # Fetch SAP data and extract Customer code
         sap_customer_code, sap_error, sap_status = fetch_sap_customer_code(customer_mk)
+        
+        # DO NOT automatically create - only create when user clicks "Generate SAP Code" button
 
         # Add SAP_customer to Autoline data
         if isinstance(autoline_data, list) and len(autoline_data) > 0:
@@ -94,17 +98,70 @@ def generate_sap_code(request):
     try:
         data = json.loads(request.body)
         customer_mk = data.get('customer_mk', '').strip()
+        is_corporate = data.get('is_corporate', False)
+
+        print(f"\n{'=' * 80}")
+        print(f"GENERATE SAP CODE REQUEST")
+        print(f"{'=' * 80}")
+        print(f"Customer MK: {customer_mk}")
+        print(f"Is Corporate: {is_corporate}")
+        print(f"Request Data: {data}")
+        print(f"{'=' * 80}\n")
 
         if not customer_mk:
             return JsonResponse({'error': 'Customer MK is required'}, status=400)
 
-        # TODO: Implement actual SAP code generation
-        return JsonResponse({
-            'success': True,
-            'message': 'SAP code generation will be implemented here. This will create the customer in SAP under the Mercedes-Benz schema for both Sales and After-Sales.'
-        })
+        # Fetch customer data from Autoline first
+        print(f"Fetching Autoline data for customer MK: {customer_mk}, Corporate: {is_corporate}")
+        autoline_data = fetch_autoline_data(customer_mk, is_corporate)
+        
+        if not autoline_data:
+            return JsonResponse({'error': 'Failed to retrieve customer data from Autoline'}, status=500)
+
+        print(f"Autoline data received: {json.dumps(autoline_data, indent=2, ensure_ascii=False)}")
+
+        # Get customer object
+        customer = None
+        if isinstance(autoline_data, list) and len(autoline_data) > 0:
+            customer = autoline_data[0]
+        elif isinstance(autoline_data, dict):
+            customer = autoline_data
+
+        if not customer:
+            return JsonResponse({'error': 'No customer data available'}, status=400)
+
+        print(f"Customer object: {json.dumps(customer, indent=2, ensure_ascii=False)}")
+
+        # Only generate for regular customers (not corporate)
+        if is_corporate:
+            return JsonResponse({
+                'error': 'SAP code generation for corporate customers is not yet implemented'
+            }, status=400)
+
+        # Build request body for SAP customer creation API
+        sap_create_body = build_sap_create_body(customer, customer_mk)
+        
+        if not sap_create_body:
+            return JsonResponse({'error': 'Failed to build SAP create body'}, status=500)
+        
+        # Call SAP customer creation API
+        result = create_sap_customer(sap_create_body)
+        
+        if result['success']:
+            return JsonResponse({
+                'success': True,
+                'message': result.get('message', 'SAP customer code generated successfully'),
+                'sap_customer_code': result.get('sap_customer_code')
+            })
+        else:
+            return JsonResponse({
+                'error': result.get('error', 'Failed to generate SAP customer code')
+            }, status=500)
 
     except Exception as e:
+        import traceback
+        print(f"Error in generate_sap_code: {str(e)}")
+        print(traceback.format_exc())
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -146,7 +203,7 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
     try:
         # Build SAP OData URL with parameters (matching exact format from API)
         param_string = f"BusinessPartner='',MobileNumber='',NationalID='',AutolineMK='{customer_mk}'"
-        url = f"{SAP_BASE_URL}/ENTITYSet({param_string})?sap-client=100"
+        url = f"{SAP_BASE_URL}/ENTITYSet({param_string})?sap-client=110"
 
         print(f"\n{'=' * 80}")
         print(f"SAP API REQUEST DEBUG")
@@ -174,11 +231,11 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
         # Method 1: Use cookies parameter (requests handles encoding automatically)
         cookies_dict = {
             "SAP_SESSIONID_PS4_100": cookie_value_decoded,  # Use decoded value
-            "sap-usercontext": "sap-client=100"
+            "sap-usercontext": "sap-client=110"
         }
         
         # Also set Cookie header as backup (curl style)
-        cookie_header = f"SAP_SESSIONID_PS4_100={SAP_SESSION_COOKIE}; sap-usercontext=sap-client=100"
+        cookie_header = f"SAP_SESSIONID_PS4_100={SAP_SESSION_COOKIE}; sap-usercontext=sap-client=110"
         headers["Cookie"] = cookie_header
 
         print(f"Full Request Headers:")
@@ -381,3 +438,327 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
         import traceback
         print(traceback.format_exc())
         return None, error_msg, 'error'
+
+
+def build_sap_create_body(customer: dict, customer_mk: str) -> dict:
+    """
+    Build the request body for SAP customer creation API from Autoline customer data
+    
+    Mapping:
+    - NationalId: from SocialId
+    - AutolineMk: from customer_mk parameter
+    - Name: FirstName + SurName
+    - Firstname: FirstName
+    - Lastname: SurName
+    - Gendertype: Sex
+    - City: "Cairo" (fixed)
+    - District: "cairo" (fixed)
+    - Street: concatenated address (Address001-005)
+    - Telephone: from Phone001 (or first available phone)
+    - TelNo: same as Telephone
+    - EMail: from email
+    - FullArabicName: from Salute
+    - RefUser: "SAP–Autoline Customer Lake" (fixed)
+    """
+    print(f"\n{'=' * 80}")
+    print(f"BUILDING SAP CREATE BODY")
+    print(f"{'=' * 80}")
+    print(f"Customer MK: {customer_mk}")
+    print(f"Customer data keys: {list(customer.keys())}")
+    print(f"{'=' * 80}\n")
+    
+    # Get mobile number (check Phone001, Phone002, Phone003, Phone004)
+    mobile_number = None
+    for phone_key in ['Phone001', 'Phone002', 'Phone003', 'Phone004']:
+        if phone_key in customer and customer[phone_key]:
+            phone_value = str(customer[phone_key]).strip()
+            if phone_value and phone_value != ' ' and phone_value != '':
+                mobile_number = phone_value
+                print(f"Found mobile number in {phone_key}: {mobile_number}")
+                break
+    
+    if not mobile_number:
+        print("WARNING: No mobile number found in customer data")
+    
+    # Concatenate address - only use Address001, Address002, Address003 for Street
+    # Address004 and Address005 are typically City/Region and Country, not street address
+    address_parts = []
+    seen_values = set()  # Track seen values to avoid duplicates
+    
+    for addr_key in ['Address001', 'Address002', 'Address003']:
+        if addr_key in customer and customer[addr_key]:
+            addr_value = str(customer[addr_key]).strip()
+            if addr_value and addr_value != ' ' and addr_value != '':
+                # Normalize and check for duplicates
+                normalized = addr_value.lower().strip()
+                if normalized not in seen_values:
+                    address_parts.append(addr_value)
+                    seen_values.add(normalized)
+                else:
+                    print(f"Skipping duplicate address value: {addr_value}")
+    
+    # Join with single space and clean up multiple spaces
+    street = ' '.join(address_parts) if address_parts else ''
+    street = ' '.join(street.split())  # Remove extra spaces
+    print(f"Concatenated address (Street): '{street}'")
+    print(f"Street length: {len(street)} characters")
+    
+    # Build name - check both FirstName and first_name (case variations)
+    first_name = customer.get('FirstName', '') or customer.get('first_name', '') or customer.get('FirstName', '')
+    if first_name:
+        first_name = str(first_name).strip()
+    
+    last_name = customer.get('SurName', '') or customer.get('sur_name', '') or customer.get('Surname', '')
+    if last_name:
+        last_name = str(last_name).strip()
+    
+    full_name = f"{first_name} {last_name}".strip()
+    print(f"First Name: {first_name}, Last Name: {last_name}, Full Name: {full_name}")
+    
+    # Get other fields
+    national_id = customer.get('SocialId', '') or customer.get('social_id', '')
+    if national_id:
+        national_id = str(national_id).strip()
+    
+    gender = customer.get('Sex', 'M') or customer.get('sex', 'M')
+    if gender:
+        gender = str(gender).strip()
+    else:
+        gender = 'M'
+    
+    # Validate email before including it
+    email = customer.get('email', '') or customer.get('Email', '')
+    if email:
+        email = str(email).strip()
+        # Basic email validation regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            print(f"WARNING: Invalid email format '{email}', not including in request")
+            email = ''
+        else:
+            print(f"Valid email found: {email}")
+    else:
+        print("No email found in customer data")
+    
+    arabic_name = customer.get('Salute', '') or customer.get('salute', '')
+    if arabic_name:
+        arabic_name = str(arabic_name).strip()
+    
+    body = {
+        "NationalId": national_id,
+        "AutolineMk": str(customer_mk),
+        "Name": full_name,
+        "Firstname": first_name,
+        "Lastname": last_name,
+        "Gendertype": gender,
+        "City": "Cairo",
+        "District": "cairo",
+        "Street": street,
+        "Telephone": mobile_number if mobile_number else '',
+        "TelNo": mobile_number if mobile_number else '',
+        "EMail": email,
+        "FullArabicName": arabic_name,
+        "RefUser": "SAP–Autoline Customer Lake"
+    }
+    
+    print(f"\n{'=' * 80}")
+    print(f"SAP CREATE BODY (FINAL)")
+    print(f"{'=' * 80}")
+    print(json.dumps(body, indent=2, ensure_ascii=False))
+    print(f"{'=' * 80}\n")
+    
+    return body
+
+
+def create_sap_customer_from_autoline(autoline_data: dict, customer_mk: str) -> dict:
+    """
+    Helper function to create SAP customer from Autoline data
+    """
+    customer = None
+    if isinstance(autoline_data, list) and len(autoline_data) > 0:
+        customer = autoline_data[0]
+    elif isinstance(autoline_data, dict):
+        customer = autoline_data
+    
+    if not customer:
+        return {'success': False, 'error': 'No customer data available'}
+    
+    body = build_sap_create_body(customer, customer_mk)
+    return create_sap_customer(body)
+
+
+def create_sap_customer(body: dict) -> dict:
+    """
+    Create customer in SAP using the customer creation API
+    
+    Returns:
+        dict with 'success', 'message', 'sap_customer_code' (if successful), or 'error'
+    """
+    try:
+        url = f"{SAP_CREATE_BASE_URL}/ENTITYSet?sap-client=110"
+        
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "X",
+            "Authorization": "Basic YWdtLmFiYXA6V2VsY29tZV8wNQ==",
+            "Cookie": "ApplicationGatewayAffinity=ffb3d8af5d7e7d2d2b15ad8cfda5375cc03082a051c80b6207a0f6d1c3b22590; ApplicationGatewayAffinityCORS=ffb3d8af5d7e7d2d2b15ad8cfda5375cc03082a051c80b6207a0f6d1c3b22590; SAP_SESSIONID_DS4_110=Za6GnZKR755AXkoBEUryBaJT3oPEFRHwjVXFg8wvBYQ%3d; sap-usercontext=sap-client=110"
+        }
+        
+        print(f"\n{'=' * 80}")
+        print(f"SAP CREATE API REQUEST")
+        print(f"{'=' * 80}")
+        print(f"URL: {url}")
+        print(f"Headers: {json.dumps(headers, indent=2)}")
+        print(f"Body: {json.dumps(body, indent=2, ensure_ascii=False)}")
+        print(f"{'=' * 80}\n")
+        
+        # Send as JSON string in data parameter (like curl --data-raw)
+        body_json = json.dumps(body, ensure_ascii=False)
+        print(f"\n{'=' * 80}")
+        print(f"FINAL REQUEST DETAILS")
+        print(f"{'=' * 80}")
+        print(f"URL: {url}")
+        print(f"Body JSON (full): {body_json}")
+        print(f"Body length: {len(body_json)} bytes")
+        print(f"{'=' * 80}\n")
+        
+        # Make sure we're sending the body correctly
+        response = requests.post(
+            url, 
+            headers=headers, 
+            data=body_json.encode('utf-8'), 
+            timeout=30, 
+            verify=False
+        )
+        
+        print(f"\n{'=' * 80}")
+        print(f"REQUEST SENT - CHECKING RESPONSE")
+        print(f"{'=' * 80}")
+        print(f"Request URL: {response.request.url}")
+        print(f"Request method: {response.request.method}")
+        print(f"Request headers: {dict(response.request.headers)}")
+        if response.request.body:
+            print(f"Request body sent: {response.request.body.decode('utf-8', errors='ignore')[:500]}")
+        else:
+            print("WARNING: Request body is EMPTY!")
+        print(f"{'=' * 80}\n")
+        
+        print(f"SAP CREATE API Status Code: {response.status_code}")
+        print(f"SAP CREATE API Response (full): {response.text}\n")
+        
+        if response.status_code in [200, 201]:
+            try:
+                response_data = response.json()
+                print(f"Parsed JSON response: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
+                
+                # Try to extract customer code from response - check multiple possible structures
+                sap_customer_code = None
+                
+                if isinstance(response_data, dict):
+                    # Method 1: Check direct keys
+                    for key in ['Customer', 'CustomerCode', 'BusinessPartner', 'CustomerNumber', 'AutolineMk']:
+                        if key in response_data:
+                            value = response_data[key]
+                            if isinstance(value, (str, int)) and value:
+                                sap_customer_code = str(value)
+                                print(f"Found customer code in key '{key}': {sap_customer_code}")
+                                break
+                    
+                    # Method 2: Check nested in 'd' key (OData format)
+                    if not sap_customer_code and 'd' in response_data:
+                        d_data = response_data['d']
+                        if isinstance(d_data, dict):
+                            for key in ['Customer', 'CustomerCode', 'BusinessPartner', 'CustomerNumber']:
+                                if key in d_data:
+                                    value = d_data[key]
+                                    if isinstance(value, (str, int)) and value:
+                                        sap_customer_code = str(value)
+                                        print(f"Found customer code in d.{key}: {sap_customer_code}")
+                                        break
+                    
+                    # Method 3: Check nested in 'results' or 'value' (array responses)
+                    if not sap_customer_code:
+                        for array_key in ['results', 'value', 'items']:
+                            if array_key in response_data and isinstance(response_data[array_key], list):
+                                for item in response_data[array_key]:
+                                    if isinstance(item, dict):
+                                        for key in ['Customer', 'CustomerCode', 'BusinessPartner', 'CustomerNumber']:
+                                            if key in item:
+                                                value = item[key]
+                                                if isinstance(value, (str, int)) and value:
+                                                    sap_customer_code = str(value)
+                                                    print(f"Found customer code in {array_key}[].{key}: {sap_customer_code}")
+                                                    break
+                                        if sap_customer_code:
+                                            break
+                            if sap_customer_code:
+                                break
+                    
+                    # Method 4: Recursively search for any field containing "Customer" or numeric value
+                    if not sap_customer_code:
+                        def find_customer_code(obj, path=""):
+                            if isinstance(obj, dict):
+                                for k, v in obj.items():
+                                    if 'customer' in k.lower() and isinstance(v, (str, int)) and v:
+                                        # Check if it looks like a customer code (numeric or alphanumeric)
+                                        val_str = str(v)
+                                        if val_str.isdigit() or (len(val_str) > 5 and any(c.isdigit() for c in val_str)):
+                                            return val_str
+                                    result = find_customer_code(v, f"{path}.{k}")
+                                    if result:
+                                        return result
+                            elif isinstance(obj, list):
+                                for i, item in enumerate(obj):
+                                    result = find_customer_code(item, f"{path}[{i}]")
+                                    if result:
+                                        return result
+                            return None
+                        
+                        sap_customer_code = find_customer_code(response_data)
+                        if sap_customer_code:
+                            print(f"Found customer code via recursive search: {sap_customer_code}")
+                
+                if sap_customer_code:
+                    print(f"✅ Successfully extracted SAP Customer Code: {sap_customer_code}")
+                else:
+                    print("⚠️ Could not extract customer code from response, but request was successful")
+                
+                return {
+                    'success': True,
+                    'message': 'SAP customer created successfully',
+                    'sap_customer_code': sap_customer_code
+                }
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {str(e)}")
+                print(f"Response text: {response.text}")
+                # Response might not be JSON, but status is success
+                return {
+                    'success': True,
+                    'message': 'SAP customer creation request completed (response not in JSON format)',
+                    'sap_customer_code': None
+                }
+        else:
+            error_msg = f"SAP API returned status {response.status_code}: {response.text[:500]}"
+            print(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+            
+    except requests.exceptions.RequestException as e:
+        error_msg = f"SAP API Request Error: {str(e)}"
+        print(error_msg)
+        return {
+            'success': False,
+            'error': error_msg
+        }
+    except Exception as e:
+        error_msg = f"Unexpected error in create_sap_customer: {str(e)}"
+        print(error_msg)
+        import traceback
+        print(traceback.format_exc())
+        return {
+            'success': False,
+            'error': error_msg
+        }
