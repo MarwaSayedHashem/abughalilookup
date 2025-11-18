@@ -464,7 +464,7 @@
             <div class="checkbox-group">
                 <label>
                     <input type="checkbox" id="corporate-checkbox" />
-                    <span>Corporate Customer</span>
+                    <span>Corporate</span>
                 </label>
             </div>
             
@@ -476,7 +476,7 @@
         
         <div class="results" id="results-section">
             <div class="customer-card">
-                <h2>Customer Information</h2>
+                <h2 id="customer-info-title">Customer Information</h2>
                 <div class="sap-badge">
                     <div class="label">SAP Customer Code</div>
                     <div class="value" id="sap-code-value">Not Found</div>
@@ -556,6 +556,14 @@
                 resultsSection.style.display = 'none';
                 customerDetails.innerHTML = '';
                 
+                // Update title based on checkbox
+                const customerInfoTitle = document.getElementById('customer-info-title');
+                if (corporateCheckbox.checked) {
+                    customerInfoTitle.textContent = 'Corporate Information';
+                } else {
+                    customerInfoTitle.textContent = 'Customer Information';
+                }
+                
                 try {
                     const response = await fetch('/api/search/', {
                         method: 'POST',
@@ -573,7 +581,7 @@
                         throw new Error(data.error);
                     }
                     
-                    displayCustomerData(data.customer_data, data.sap_customer_code, data.has_sap_record, data.sap_status);
+                    displayCustomerData(data.customer_data, data.sap_customer_code, data.has_sap_record, data.sap_status, corporateCheckbox.checked);
                     if (rawJsonData) rawJsonData.textContent = JSON.stringify(data.customer_data, null, 2);
                     
                     resultsSection.style.display = 'block';
@@ -599,7 +607,7 @@
                 }
             }
             
-            function displayCustomerData(customerData, sapCode, hasSapRecord, sapStatus) {
+            function displayCustomerData(customerData, sapCode, hasSapRecord, sapStatus, isCorporateCheckboxChecked = false) {
                 if (hasSapRecord && sapCode) {
                     sapCodeValue.textContent = sapCode;
                     sapCodeValue.className = 'value found';
@@ -622,8 +630,16 @@
                     return;
                 }
                 
-                // Check if this is a corporate customer (has CustomerCode or AccountCode)
-                const isCorporate = customer.CustomerCode !== undefined || customer.AccountCode !== undefined;
+                // Check if this is a corporate customer (has CustomerCode or AccountCode, or checkbox is checked)
+                const isCorporate = isCorporateCheckboxChecked || customer.CustomerCode !== undefined || customer.AccountCode !== undefined;
+                
+                // Update title based on customer type
+                const customerInfoTitle = document.getElementById('customer-info-title');
+                if (isCorporate) {
+                    customerInfoTitle.textContent = 'Corporate Information';
+                } else {
+                    customerInfoTitle.textContent = 'Customer Information';
+                }
                 
                 let processedCustomer = {};
                 let fieldLabels = {};
