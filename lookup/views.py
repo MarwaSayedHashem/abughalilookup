@@ -132,14 +132,11 @@ def generate_sap_code(request):
 
         print(f"Customer object: {json.dumps(customer, indent=2, ensure_ascii=False)}")
 
-        # Only generate for regular customers (not corporate)
+        # Build request body for SAP customer creation API (different for corporate vs regular)
         if is_corporate:
-            return JsonResponse({
-                'error': 'SAP code generation for corporate customers is not yet implemented'
-            }, status=400)
-
-        # Build request body for SAP customer creation API
-        sap_create_body = build_sap_create_body(customer, customer_mk)
+            sap_create_body = build_sap_create_body_corporate(customer, customer_mk)
+        else:
+            sap_create_body = build_sap_create_body(customer, customer_mk)
         
         if not sap_create_body:
             return JsonResponse({'error': 'Failed to build SAP create body'}, status=500)
@@ -570,7 +567,129 @@ def build_sap_create_body(customer: dict, customer_mk: str) -> dict:
     return body
 
 
-def create_sap_customer_from_autoline(autoline_data: dict, customer_mk: str) -> dict:
+def build_sap_create_body_corporate(customer: dict, customer_mk: str) -> dict:
+    """
+    Build the request body for SAP corporate customer creation API from Autoline customer data
+    
+    Mapping:
+    - TaxRegister: from RegestreationNumber
+    - AutolineMk: from customer_mk parameter
+    - Name: from CustomerName
+    - Firstname: from NAME 1 (FirstName + LastName concatenated in Arabic)
+    - Lastname: from NAME 2 (EnglishFirstNmae + EnglishLastName concatenated in English)
+    - City: "Cairo" (fixed)
+    - District: "cairo" (fixed)
+    - Street: concatenated from Address, District, Region, BuildingNumber
+    - Telephone: from MobileNumber
+    - TelNo: same as Telephone
+    - EMail: from Email
+    - FullArabicName: from CustomerName
+    - RefUser: "SAP–Autoline Customer Lake" (fixed)
+    """
+    print(f"\n{'=' * 80}")
+    print(f"BUILDING SAP CREATE BODY (CORPORATE)")
+    print(f"{'=' * 80}")
+    print(f"Customer MK: {customer_mk}")
+    print(f"Customer data keys: {list(customer.keys())}")
+    print(f"{'=' * 80}\n")
+    
+    # Get mobile number
+    mobile_number = customer.get('MobileNumber', '') or customer.get('mobileNumber', '')
+    if mobile_number:
+        mobile_number = str(mobile_number).strip()
+        print(f"Found mobile number: {mobile_number}")
+    else:
+        print("WARNING: No mobile number found in customer data")
+    
+    # Concatenate address from Address, District, Region, BuildingNumber
+    address_parts = []
+    seen_values = set()
+    
+    for addr_key in ['Address', 'District', 'Region', 'BuildingNumber']:
+        if addr_key in customer and customer[addr_key]:
+            addr_value = str(customer[addr_key]).strip()
+            if addr_value and addr_value != ' ' and addr_value != '':
+                normalized = addr_value.lower().strip()
+                if normalized not in seen_values:
+                    address_parts.append(addr_value)
+                    seen_values.add(normalized)
+                else:
+                    print(f"Skipping duplicate address value: {addr_value}")
+    
+    street = ' '.join(address_parts) if address_parts else ''
+    street = ' '.join(street.split())  # Remove extra spaces
+    print(f"Concatenated address (Street): '{street}'")
+    
+    # Get NAME 1 (Arabic: FirstName + LastName)
+    first_name_ar = customer.get('FirstName', '') or customer.get('first_name', '')
+    last_name_ar = customer.get('LastName', '') or customer.get('last_name', '')
+    name1_parts = []
+    if first_name_ar:
+        name1_parts.append(str(first_name_ar).strip())
+    if last_name_ar:
+        name1_parts.append(str(last_name_ar).strip())
+    name1 = ' '.join(name1_parts).strip()
+    print(f"NAME 1 (Arabic): '{name1}'")
+    
+    # Get NAME 2 (English: EnglishFirstNmae + EnglishLastName)
+    first_name_en = customer.get('EnglishFirstNmae', '') or customer.get('EnglishFirstName', '') or customer.get('englishFirstNmae', '')
+    last_name_en = customer.get('EnglishLastName', '') or customer.get('englishLastName', '')
+    name2_parts = []
+    if first_name_en:
+        name2_parts.append(str(first_name_en).strip())
+    if last_name_en:
+        name2_parts.append(str(last_name_en).strip())
+    name2 = ' '.join(name2_parts).strip()
+    print(f"NAME 2 (English): '{name2}'")
+    
+    # Get other fields
+    tax_register = customer.get('RegestreationNumber', '') or customer.get('regestreationNumber', '')
+    if tax_register:
+        tax_register = str(tax_register).strip()
+    
+    customer_name = customer.get('CustomerName', '') or customer.get('customerName', '')
+    if customer_name:
+        customer_name = str(customer_name).strip()
+    
+    # Validate email
+    email = customer.get('Email', '') or customer.get('email', '')
+    if email:
+        email = str(email).strip()
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            print(f"WARNING: Invalid email format '{email}', not including in request")
+            email = ''
+        else:
+            print(f"Valid email found: {email}")
+    else:
+        print("No email found in customer data")
+    
+    body = {
+        "TaxRegister": tax_register,
+        "AutolineMk": str(customer_mk),
+        "Name": customer_name,
+        "Firstname": name1,
+        "Lastname": name2,
+        "City": "Cairo",
+        "District": "cairo",
+        "Street": street,
+        "Telephone": mobile_number if mobile_number else '',
+        "TelNo": mobile_number if mobile_number else '',
+        "EMail": email,
+        "FullArabicName": customer_name,  # From CustomerName
+        "RefUser": "SAP–Autoline Customer Lake"
+    }
+    
+    print(f"\n{'=' * 80}")
+    print(f"SAP CREATE BODY (CORPORATE - FINAL)")
+    print(f"{'=' * 80}")
+    print(json.dumps(body, indent=2, ensure_ascii=False))
+    print(f"{'=' * 80}\n")
+    
+    return body
+
+
+def create_sap_customer_from_autoline(autoline_data: dict, customer_mk: str, is_corporate: bool = False) -> dict:
     """
     Helper function to create SAP customer from Autoline data
     """
@@ -583,7 +702,11 @@ def create_sap_customer_from_autoline(autoline_data: dict, customer_mk: str) -> 
     if not customer:
         return {'success': False, 'error': 'No customer data available'}
     
-    body = build_sap_create_body(customer, customer_mk)
+    if is_corporate:
+        body = build_sap_create_body_corporate(customer, customer_mk)
+    else:
+        body = build_sap_create_body(customer, customer_mk)
+    
     return create_sap_customer(body)
 
 
