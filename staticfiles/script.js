@@ -429,4 +429,4 @@ async function handleGenerateSapCode() {
 
 // Initialize
 updateStatus('Ready', 'success');
-console.log('Customer Lookup System initialized');
+console.log('Customer Data Lake for SAP & Autoline initialized');

@@ -1,4 +1,4 @@
-# Customer Lookup System - AbuGhali Motors
+# Customer Data Lake for SAP & Autoline - AbuGhali Motors
 
 A Python application for looking up customer information from Autoline and SAP systems. Available in two versions: **Desktop GUI** (tkinter) and **Web Interface** (Flask).
 
