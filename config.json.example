@@ -1,0 +1,22 @@
+{
+    "autoline": {
+        "base_url": "http://YOUR_AUTOLINE_SERVER:PORT",
+        "token": "YOUR_AUTOLINE_TOKEN_HERE"
+    },
+    "sap": {
+        "search_base_url": "https://your-sap-server.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV",
+        "create_base_url": "https://your-sap-server.com/sap/opu/odata/sap/ZAUTOLINE_CUSTOMER_LAKE_CREATE_SRV",
+        "search_client": "110",
+        "create_client": "110",
+        "search_authorization": "Basic YOUR_BASE64_ENCODED_AUTH",
+        "create_authorization": "Basic YOUR_BASE64_ENCODED_AUTH",
+        "search_cookie": "YOUR_SEARCH_SESSION_COOKIE",
+        "create_cookie": "YOUR_CREATE_SESSION_COOKIE"
+    },
+    "app": {
+        "name": "SAP–Autoline Customer Lake",
+        "company": "Your Company Name"
+    }
+}
+
+

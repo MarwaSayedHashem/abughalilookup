@@ -1,77 +1,69 @@
-# SAP–Autoline Customer Lake - AbuGhali Motors
+# SAP–Autoline Customer Lake
 
-A Python application for looking up customer information from Autoline and SAP systems. Available in two versions: **Desktop GUI** (tkinter) and **Web Interface** (Flask).
+A web-based customer lookup system that integrates Autoline and SAP APIs to provide a unified customer data view.
 
-## Features
+## 🚀 Quick Start
 
-- **Customer Lookup**: Enter Customer MK to retrieve customer details
-- **Corporate Customer Support**: Checkbox to toggle between regular and corporate customer lookup
-- **Autoline Integration**: Fetches customer data from Autoline API
-- **SAP Integration**: Searches for existing customer records in SAP
-- **SAP Code Generation**: Button to generate SAP customer code when no record exists
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Installation
+2. **Configure the application:**
+   - Copy `config.json.example` to `config.json`
+   - Edit `config.json` with your API credentials (see [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md))
 
-1. Install Python 3.7 or higher
-2. Install required dependencies:
+3. **Run the server:**
+   ```bash
+   python manage.py runserver
+   ```
 
-```bash
-pip install -r requirements.txt
+4. **Access the application:**
+   - Open your browser and go to `http://localhost:8000`
+
+## 📋 Features
+
+- ✅ Search customers by Customer MK (regular or corporate)
+- ✅ Automatic SAP customer code lookup
+- ✅ Generate SAP customer codes for new customers
+- ✅ Drag-and-drop field reordering
+- ✅ Modern, responsive UI
+- ✅ Easy configuration via `config.json`
+
+## ⚙️ Configuration
+
+**No programming knowledge required!** All API settings can be changed in `config.json`. See [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for detailed instructions.
+
+## 🌐 Deployment
+
+For production deployment, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+
+## 📁 Project Structure
+
+```
+.
+├── config.json              # API configuration (edit this!)
+├── config.json.example      # Configuration template
+├── customer_lookup/         # Django project settings
+├── lookup/                  # Main application
+│   ├── views.py            # API endpoints
+│   └── urls.py             # URL routing
+├── templates/               # HTML templates
+├── static/                  # CSS and JavaScript
+├── CONFIGURATION_GUIDE.md   # How to edit config.json
+└── DEPLOYMENT_GUIDE.md      # Production deployment guide
 ```
 
-## Usage
+## 🔧 Requirements
 
-### Option 1: Desktop GUI Application (tkinter)
+- Python 3.8+
+- Django 4.0+
+- See `requirements.txt` for full list
 
-Run the desktop application:
+## 📞 Support
 
-```bash
-python customer_lookup.py
-```
+For configuration help, see [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md).
 
-### Option 2: Web Application (Flask)
+## 📝 License
 
-Run the web server:
-
-```bash
-python app.py
-```
-
-Then open your browser and navigate to:
-```
-http://localhost:5000
-```
-
-**Templates Location:**
-- HTML templates: `templates/index.html`
-- CSS styles: `static/style.css`
-- JavaScript: `static/script.js`
-
-### How to Use
-
-1. Enter the **Customer MK** in the input field
-2. Check the **Corporate Customer** checkbox if applicable
-3. Click **Go** to search for customer information
-4. View the results:
-   - **Autoline Customer Details**: Full response from Autoline API
-   - **SAP Customer Details**: SAP customer record (if exists)
-   - **SAP Customer Code**: Displays the SAP code if found
-5. If no SAP record exists, click **Generate SAP Code** to create a new customer in SAP
-
-## API Endpoints
-
-### Autoline APIs
-
-- **Regular Customer**: `GET /SpotFlow/CustomerBySocialId/byid/{CustomerMK}`
-- **Corporate Customer**: `GET /SpotFlow/salesLedger/byid/{CustomerMK}`
-
-### SAP API
-
-- **Customer Search**: `GET /sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV/ENTITYSet(...)`
-
-## Notes
-
-- The application requires network access to Autoline and SAP servers
-- API credentials are configured in the application
-- SAP code generation functionality is ready for implementation
-
+Internal use only - Abou Ghaly Motors

@@ -18,22 +18,75 @@ if sys.platform == 'win32':
     except Exception:
         pass  # If reconfiguration fails, continue anyway
 
-# API Configuration
-AUTOLINE_BASE_URL = "http://41.33.17.242:7050"
-AUTOLINE_TOKEN = "6cktR-wnMWYTRM9Ys8wlwudEOjo-1Ox6wuLLQsF7dqwen2gxLlrZhXoQgXDtK9Vd59k2fpPT1Ts0uwcyb_HdMrEuSlxDcxzd-4LqD8oY-jT1mb7_jSmGre9UtntznE20hcT4Yoxua3BAbDKkqZv19fWdfI6n8-HpZ-Vddzh6aggzdrBMQTB9hM6at5np49rRDH0biFFX9QcJyqdh3D81RbSYF14ZBVUNVIb_TP6mOm0b-DRHPPdQis64ln0qVfMc"
-SAP_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV"
-SAP_CREATE_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZAUTOLINE_CUSTOMER_LAKE_CREATE_SRV"
+# Load configuration from config.json
+import os
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
 
-# Try to import SAP session cookie from config file
+def load_config():
+    """Load configuration from config.json file"""
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        return config
+    except FileNotFoundError:
+        print(f"WARNING: config.json not found at {CONFIG_FILE}, using defaults")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in config.json: {e}")
+        return None
+
+# Load configuration
+_config = load_config()
+
+# API Configuration - with fallback to defaults
+if _config:
+    AUTOLINE_BASE_URL = _config.get('autoline', {}).get('base_url', 'http://41.33.17.242:7050')
+    AUTOLINE_TOKEN = _config.get('autoline', {}).get('token', '')
+    SAP_BASE_URL = _config.get('sap', {}).get('search_base_url', 'https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV')
+    SAP_CREATE_BASE_URL = _config.get('sap', {}).get('create_base_url', 'https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZAUTOLINE_CUSTOMER_LAKE_CREATE_SRV')
+    SAP_SEARCH_CLIENT = _config.get('sap', {}).get('search_client', '110')
+    SAP_CREATE_CLIENT = _config.get('sap', {}).get('create_client', '110')
+    SAP_SEARCH_AUTH = _config.get('sap', {}).get('search_authorization', 'Basic QWdtLmFiYXA6V2VsY29tZV8wNQ==')
+    SAP_CREATE_AUTH = _config.get('sap', {}).get('create_authorization', 'Basic YWdtLmFiYXA6V2VsY29tZV8wNQ==')
+    SAP_SEARCH_COOKIE = _config.get('sap', {}).get('search_cookie', '')
+    SAP_CREATE_COOKIE = _config.get('sap', {}).get('create_cookie', '')
+else:
+    # Fallback defaults
+    AUTOLINE_BASE_URL = "http://41.33.17.242:7050"
+    AUTOLINE_TOKEN = "6cktR-wnMWYTRM9Ys8wlwudEOjo-1Ox6wuLLQsF7dqwen2gxLlrZhXoQgXDtK9Vd59k2fpPT1Ts0uwcyb_HdMrEuSlxDcxzd-4LqD8oY-jT1mb7_jSmGre9UtntznE20hcT4Yoxua3BAbDKkqZv19fWdfI6n8-HpZ-Vddzh6aggzdrBMQTB9hM6at5np49rRDH0biFFX9QcJyqdh3D81RbSYF14ZBVUNVIb_TP6mOm0b-DRHPPdQis64ln0qVfMc"
+    SAP_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZSD_SP_SEARCH_CUSTOMER_SRV"
+    SAP_CREATE_BASE_URL = "https://dev.sap.aboughalymotors.com/sap/opu/odata/sap/ZAUTOLINE_CUSTOMER_LAKE_CREATE_SRV"
+    SAP_SEARCH_CLIENT = "110"
+    SAP_CREATE_CLIENT = "110"
+    SAP_SEARCH_AUTH = "Basic QWdtLmFiYXA6V2VsY29tZV8wNQ=="
+    SAP_CREATE_AUTH = "Basic YWdtLmFiYXA6V2VsY29tZV8wNQ=="
+    SAP_SEARCH_COOKIE = ""
+    SAP_CREATE_COOKIE = "ApplicationGatewayAffinity=ffb3d8af5d7e7d2d2b15ad8cfda5375cc03082a051c80b6207a0f6d1c3b22590; ApplicationGatewayAffinityCORS=ffb3d8af5d7e7d2d2b15ad8cfda5375cc03082a051c80b6207a0f6d1c3b22590; SAP_SESSIONID_DS4_110=Za6GnZKR755AXkoBEUryBaJT3oPEFRHwjVXFg8wvBYQ%3d; sap-usercontext=sap-client=110"
+
+# Try to import SAP session cookie from legacy config file (for backward compatibility)
 try:
     from sap_config import SAP_SESSION_COOKIE
+    if not SAP_SEARCH_COOKIE:
+        SAP_SEARCH_COOKIE = SAP_SESSION_COOKIE
 except ImportError:
-    SAP_SESSION_COOKIE = "hs_W2VvZMZDFqtRSKnJ2lsiIj4XD_RHwkJu1n9yMioQ%3d"
+    pass
 
 
 def index(request):
     """Main page"""
-    return render(request, 'lookup/index.html')
+    # Load app name and company from config
+    app_name = "SAP–Autoline Customer Lake"
+    company_name = "Abou Ghaly Motors"
+    
+    if _config and 'app' in _config:
+        app_name = _config['app'].get('name', app_name)
+        company_name = _config['app'].get('company', company_name)
+    
+    context = {
+        'app_name': app_name,
+        'company_name': company_name
+    }
+    return render(request, 'lookup/index.html', context)
 
 
 @csrf_exempt
@@ -200,39 +253,56 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
     try:
         # Build SAP OData URL with parameters (matching exact format from API)
         param_string = f"BusinessPartner='',MobileNumber='',NationalID='',AutolineMK='{customer_mk}'"
-        url = f"{SAP_BASE_URL}/ENTITYSet({param_string})?sap-client=110"
+        url = f"{SAP_BASE_URL}/ENTITYSet({param_string})?sap-client={SAP_SEARCH_CLIENT}"
 
         print(f"\n{'=' * 80}")
         print(f"SAP API REQUEST DEBUG")
         print(f"{'=' * 80}")
         print(f"URL: {url}")
-        print(f"Cookie value: {SAP_SESSION_COOKIE}")
-        print(f"Cookie length: {len(SAP_SESSION_COOKIE)}")
+        search_cookie = SAP_SEARCH_COOKIE if SAP_SEARCH_COOKIE else ""
+        if not search_cookie:
+            try:
+                from sap_config import SAP_SESSION_COOKIE
+                search_cookie = SAP_SESSION_COOKIE
+            except ImportError:
+                pass
+        print(f"Cookie value: {search_cookie}")
+        print(f"Cookie length: {len(search_cookie)}")
         print(f"{'=' * 80}\n")
 
         # Match the exact working curl command with fresh credentials
         headers = {
             "X-Requested-With": "X",
-            "Authorization": "Basic QWdtLmFiYXA6V2VsY29tZV8wNQ==",
+            "Authorization": SAP_SEARCH_AUTH,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
         # Try both methods: Cookie header (curl style) and cookies parameter
         # First, try with cookies parameter (requests library handles encoding)
         import urllib.parse
+        # Use cookie from config, or fallback to legacy
+        search_cookie = SAP_SEARCH_COOKIE if SAP_SEARCH_COOKIE else ""
+        if not search_cookie:
+            # Try legacy import
+            try:
+                from sap_config import SAP_SESSION_COOKIE
+                search_cookie = SAP_SESSION_COOKIE
+            except ImportError:
+                pass
+        
         # URL-decode the cookie value if it's encoded
-        cookie_value_decoded = urllib.parse.unquote(SAP_SESSION_COOKIE)
-        print(f"Cookie value (encoded): {SAP_SESSION_COOKIE}")
+        cookie_value_decoded = urllib.parse.unquote(search_cookie) if search_cookie else ""
+        print(f"Cookie value (encoded): {search_cookie}")
         print(f"Cookie value (decoded): {cookie_value_decoded}")
         
         # Method 1: Use cookies parameter (requests handles encoding automatically)
         cookies_dict = {
             "SAP_SESSIONID_PS4_100": cookie_value_decoded,  # Use decoded value
-            "sap-usercontext": "sap-client=110"
+            "sap-usercontext": f"sap-client={SAP_SEARCH_CLIENT}"
         }
         
         # Also set Cookie header as backup (curl style)
-        cookie_header = f"SAP_SESSIONID_PS4_100={SAP_SESSION_COOKIE}; sap-usercontext=sap-client=110"
+        cookie_header = f"SAP_SESSIONID_PS4_100={search_cookie}; sap-usercontext=sap-client={SAP_SEARCH_CLIENT}"
         headers["Cookie"] = cookie_header
 
         print(f"Full Request Headers:")
@@ -406,9 +476,11 @@ def fetch_sap_customer_code(customer_mk: str) -> Tuple[Optional[str], Optional[s
                 return None, error_msg, 'error'
 
         elif response.status_code == 403:
-            error_msg = "SAP session cookie has expired. Please update the cookie in sap_config.py"
+            error_msg = "SAP session cookie has expired. Please update the cookie in config.json"
             print(f"SAP API returned 403 Forbidden for MK: {customer_mk}")
-            print(f"Current cookie: {SAP_SESSION_COOKIE[:50]}...")
+            search_cookie = SAP_SEARCH_COOKIE if SAP_SEARCH_COOKIE else ""
+            if search_cookie:
+                print(f"Current cookie: {search_cookie[:50]}...")
             print(error_msg)
             return None, error_msg, 'session_expired'
 
